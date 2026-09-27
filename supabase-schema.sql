@@ -29,6 +29,22 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+-- Read the current user's role without re-entering profiles RLS.
+-- A policy on profiles that selects from profiles causes infinite recursion.
+CREATE OR REPLACE FUNCTION public.current_profile_role()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid()
+$$;
+
+REVOKE ALL ON FUNCTION public.current_profile_role() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_profile_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_profile_role() TO service_role;
+
 -- RLS Policies for profiles
 CREATE POLICY "Users can view all profiles" ON profiles
   FOR SELECT TO authenticated
@@ -40,12 +56,8 @@ CREATE POLICY "Users can update own profile" ON profiles
 
 CREATE POLICY "Admins can do anything with profiles" ON profiles
   FOR ALL TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (public.current_profile_role() = 'admin')
+  WITH CHECK (public.current_profile_role() = 'admin');
 
 -- =====================================================
 -- 2. MEMBERS TABLE (for project assignment)
