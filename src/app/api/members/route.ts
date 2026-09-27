@@ -10,6 +10,55 @@ const createMemberSchema = z.object({
   role: z.string().min(1).max(80).nullable().optional(), // Job Title
 });
 
+async function ensureRegisteredUsersAreMembers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  role: string,
+) {
+  if (!["admin", "member"].includes(role)) return;
+
+  const [{ data: profiles }, { data: members }] = await Promise.all([
+    supabase.from("profiles").select("id, email, full_name"),
+    supabase.from("members").select("id, user_id, email"),
+  ]);
+
+  const linkedUserIds = new Set(
+    (members || []).map((member) => member.user_id).filter(Boolean),
+  );
+  const memberByEmail = new Map(
+    (members || [])
+      .filter((member) => member.email)
+      .map((member) => [member.email!.trim().toLowerCase(), member]),
+  );
+
+  for (const profile of profiles || []) {
+    if (linkedUserIds.has(profile.id)) continue;
+
+    const email = profile.email?.trim().toLowerCase() || null;
+    const existing = email ? memberByEmail.get(email) : undefined;
+    const name =
+      profile.full_name?.trim() ||
+      (email ? email.split("@")[0] : "") ||
+      "Member";
+
+    if (existing?.id && !existing.user_id) {
+      await supabase.from("members").update({ user_id: profile.id }).eq("id", existing.id);
+      linkedUserIds.add(profile.id);
+      continue;
+    }
+
+    if (existing?.user_id) continue;
+
+    const { error } = await supabase.from("members").insert({
+      user_id: profile.id,
+      name,
+      email,
+      role: "developer",
+    });
+
+    if (!error) linkedUserIds.add(profile.id);
+  }
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient();
 
@@ -20,6 +69,9 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { effectiveRole } = await getRoleContext(supabase, user.id);
+  await ensureRegisteredUsersAreMembers(supabase, effectiveRole);
 
   const { data: profile } = await supabase
     .from("profiles")

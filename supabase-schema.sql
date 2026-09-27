@@ -168,6 +168,8 @@ CREATE TABLE IF NOT EXISTS projects (
   deadline DATE,
   budget DECIMAL(12,2),
   labels TEXT[] DEFAULT ARRAY[]::TEXT[],
+  color TEXT DEFAULT '#8B5CF6',
+  icon TEXT DEFAULT 'FolderKanban',
   member_id UUID REFERENCES members(id) ON DELETE SET NULL,
   description TEXT,
   created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -415,6 +417,15 @@ BEGIN
     NEW.raw_user_meta_data->>'full_name',
     'viewer'
   );
+
+  INSERT INTO public.members (user_id, name, email, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'full_name', ''), split_part(COALESCE(NEW.email, ''), '@', 1), 'Member'),
+    NEW.email,
+    'developer'
+  );
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
