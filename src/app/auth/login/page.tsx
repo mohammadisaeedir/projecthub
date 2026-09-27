@@ -13,6 +13,7 @@ export default function LoginPage() {
   
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
@@ -106,12 +107,26 @@ export default function LoginPage() {
     }
   }
 
-  const handleSignUp = async () => {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLoading(true)
     setError(null)
 
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail || !password) {
+      setError("Enter your email and password, then click Create account.")
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.signUp({
-      email,
+      email: trimmedEmail,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -148,7 +163,9 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl">Welcome to ProjectHub</CardTitle>
-          <CardDescription>Sign in to manage your projects</CardDescription>
+          <CardDescription>
+            {mode === "signup" ? "Create an account to manage your projects" : "Sign in to manage your projects"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -157,7 +174,7 @@ export default function LoginPage() {
             </div>
           )}
           
-          <form onSubmit={handleEmailLogin} className="space-y-3">
+          <form onSubmit={mode === "signup" ? handleSignUp : handleEmailLogin} className="space-y-3">
             <input
               type="email"
               placeholder="Email"
@@ -172,10 +189,11 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm input-glow"
+              minLength={6}
               required
             />
             <Button type="submit" className="w-full btn-glow" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign In"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signup" ? "Create account" : "Sign In"}
             </Button>
           </form>
 
@@ -217,14 +235,17 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            {mode === "signup" ? "Already have an account? " : "Don't have an account? "}
             <button
               type="button"
-              onClick={handleSignUp}
+              onClick={() => {
+                setMode(mode === "signup" ? "signin" : "signup")
+                setError(null)
+              }}
               className="text-primary hover:underline link-underline"
               disabled={loading}
             >
-              Sign up
+              {mode === "signup" ? "Sign in" : "Sign up"}
             </button>
           </p>
         </CardContent>
