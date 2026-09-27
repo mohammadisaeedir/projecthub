@@ -56,12 +56,17 @@ export default function LoginPage() {
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       })
 
       if (error) {
-        setError(error.message)
+        const message = error.message.toLowerCase()
+        setError(
+          message.includes("invalid login credentials")
+            ? "That email and password do not match. Use the password from the first signup. Later signup attempts do not change it."
+            : error.message
+        )
         setLoading(false)
       } else {
         await fetch("/api/auth/activity", {
@@ -142,9 +147,16 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message)
+      const message = error.message.toLowerCase()
+      if (message.includes("rate limit")) {
+        setError("Supabase blocked another confirmation email. Your account is already created. Click Sign in and use the same email and password.")
+      } else if (message.includes("already registered") || message.includes("already been registered")) {
+        setError("This email is already signed up. Click Sign in and use the same password.")
+      } else {
+        setError(error.message)
+      }
     } else {
-      setError("Check your email for the confirmation link!")
+      setError("Check your email for the confirmation link. After it opens, come back here and sign in with the same email and password.")
     }
     setLoading(false)
   }
