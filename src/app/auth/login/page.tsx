@@ -88,7 +88,11 @@ export default function LoginPage() {
       },
     })
     if (error) {
-      setError(error.message)
+      setError(
+        error.message.toLowerCase().includes("provider is not enabled")
+          ? "Google sign-in is turned off in Supabase. Use email and password, or enable the Google provider in Supabase Authentication settings."
+          : error.message
+      )
       setLoading(false)
     }
   }
@@ -102,7 +106,11 @@ export default function LoginPage() {
       },
     })
     if (error) {
-      setError(error.message)
+      setError(
+        error.message.toLowerCase().includes("provider is not enabled")
+          ? "GitHub sign-in is turned off in Supabase. Use email and password, or enable the GitHub provider in Supabase Authentication settings."
+          : error.message
+      )
       setLoading(false)
     }
   }

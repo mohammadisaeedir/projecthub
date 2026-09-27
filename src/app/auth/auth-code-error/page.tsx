@@ -6,7 +6,8 @@ export default function AuthCodeErrorPage() {
       <div className="text-center">
         <h1 className="text-2xl font-bold mb-4">Authentication Error</h1>
         <p className="text-muted-foreground mb-6">
-          There was a problem signing you in. Please try again.
+          The email link confirmed your account, but it did not start a session.
+          Go back and sign in with the same email and password.
         </p>
         <Link 
           href="/auth/login"
